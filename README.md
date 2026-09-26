@@ -244,14 +244,14 @@ _.quit _y                                    ; accoreconsole: _y=放弃修改；
 8. 非标准打印比例走 `SetUseStandardScale(false) + SetCustomPrintScale(new CustomScale(1, n))`；`StdScaleType` 枚举没有 1:1000（只有 1000:1），勿按分母硬套枚举
 9. accoreconsole 的 `_.quit` 二次确认与完整版 acad 语义相反（控制台 `_y`=放弃修改；图形界面 `_y`=保存并关闭），脚本务必分环境对待
 
-## 路线图（按需加）
+## 路线图
 
-1. WinForms 对话框（图纸列表勾选/改比例/改文件名）
-2. 合成单个多页 PDF（DsdData/Publisher 或 PdfSharp 合并）
-3. 多 DWG 目录遍历（accoreconsole 并行）
-4. 布局空间遍历出图；天正 T20 图框块名兼容
-5. 打印机纸张输出（改 DeviceName）、打印样式表（monochrome.ctb）
-6. 图框属性→文件名规则自定义
+**已完成**（详见上方版本历史）：出图对话框 BPLOT（v0.5）｜合成单 PDF+书签（v0.4）｜布局批量出图 BPL（v0.4）｜DWG 拆分 BPSPLIT（v0.4）｜图框学习 BPTEACH+天正 T20 块名兼容（v0.3）｜文件名模板（v0.3）｜黑白打印 monochrome.ctb（v0.2）
+
+**待办**：
+1. 多 DWG 目录遍历——第一步补一个 `for %%f in (*.dwg)` 循环调 accoreconsole 的批处理脚本（含失败清单汇总）；accoreconsole 多进程并行按需评估（并行时每进程需独立 DWG 与输出目录，license 占用翻倍）
+
+**不做**：实体打印机纸张输出——插件定位就是 PDF 出图，设备固定 `DWG To PDF.pc3`，不开放设备选择。
 
 ## 兼容性
 
