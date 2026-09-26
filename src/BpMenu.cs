@@ -3,9 +3,11 @@
 // 实现分两步：
 //   1. AcCui.dll（Managed Customization API）运行时生成部分菜单 %APPDATA%\BPPlot\BPPlot.cui
 //   2. COM MenuGroups.Load 加载该 CUI，InsertInMenuBar 挂到菜单栏末尾
+// 持久化语义：部分菜单会跨会话保留，但插件本身不会自动加载——因此每项宏都自带
+// "静默 NETLOAD 当前插件路径"前缀（NETLOAD 对已加载程序集是幂等空操作），重启 CAD 后
+// 点击菜单即自动加载插件并执行；每次 NETLOAD 时就地刷新已挂菜单的宏，保证路径始终最新。
 // 仅图形界面有效（accoreconsole 无图形环境，App.Initialize 已按进程名跳过）；
-// 重复 NETLOAD / 启动套件每次启动都会调用，已挂时自动去重。
-// 注意：菜单栏默认随功能区隐藏，看不到菜单时在命令行执行 MENUBAR 并输入 1。
+// 菜单栏默认随功能区隐藏，看不到菜单时执行 MENUBAR 输入 1。
 
 using System;
 using System.Collections.Specialized;
@@ -22,6 +24,22 @@ namespace BpPlot
         const string MenuGroupName = "BPPlot";
         const string MenuTitle = "BP-批量打印";
 
+        // 菜单定义（显示标签, 命令名）——生成 CUI 与就地刷新宏共用
+        static readonly string[,] Items = new string[,]
+        {
+            { "单张打印预览", "BPPREVIEW" },
+            { "单张快打到 PDF", "BP1" },
+            { "批量出图对话框（勾选确认）", "BPLOT" },
+            { "全自动批量出图", "BPLOTAUTO" },
+            { "批量出图并合成单 PDF", "BPLOTMERGE" },
+            { "布局批量出图", "BPL" },
+            { "DWG 按图框拆分", "BPSPLIT" },
+            { "图框学习", "BPTEACH" },
+            { "批量改版次/日期", "BPREV" },
+            { "使用说明（GitHub）...", "BPHELP" },
+            { "关于 BPPlot...", "BPABOUT" }
+        };
+
         public static void Install()
         {
             try
@@ -29,9 +47,19 @@ namespace BpPlot
                 AcadApplication app = (AcadApplication)Application.AcadApplication;
                 if (app == null) return;
 
-                // 已挂在菜单栏则跳过（防重复 NETLOAD）
-                foreach (AcadPopupMenu m in app.MenuBar)
-                    if (m.Name == MenuTitle) return;
+                // 已加载的同名菜单组：就地刷新宏（DLL 挪动/升级后路径保持最新），需要时重新挂栏
+                AcadMenuGroup existing = FindGroup(app);
+                if (existing != null)
+                {
+                    AcadPopupMenu popup = FindPopup(existing);
+                    if (popup != null)
+                    {
+                        RefreshMacros(popup);
+                        if (!popup.OnMenuBar) popup.InsertInMenuBar(app.MenuBar.Count);
+                        Notice(app, "已刷新菜单: " + MenuTitle);
+                        return;
+                    }
+                }
 
                 string cui = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BPPlot", "BPPlot.cui");
@@ -44,8 +72,7 @@ namespace BpPlot
                     if (p.Name == MenuTitle)
                     {
                         p.InsertInMenuBar(app.MenuBar.Count);
-                        Document doc = Application.DocumentManager.MdiActiveDocument;
-                        if (doc != null) doc.Editor.WriteMessage("\n已加载菜单: " + MenuTitle + "\n");
+                        Notice(app, "已加载菜单: " + MenuTitle);
                         break;
                     }
                 }
@@ -61,34 +88,74 @@ namespace BpPlot
             }
         }
 
-        // 运行时重建部分菜单 CUI（覆盖生成，保证与当前命令集一致）
+        static AcadMenuGroup FindGroup(AcadApplication app)
+        {
+            foreach (AcadMenuGroup g in app.MenuGroups)
+                if (g.Name == MenuGroupName) return g;
+            return null;
+        }
+
+        static AcadPopupMenu FindPopup(AcadMenuGroup grp)
+        {
+            foreach (AcadPopupMenu p in grp.Menus)
+                if (p.Name == MenuTitle) return p;
+            return null;
+        }
+
+        // 就地刷新：按标签匹配逐项 set_Macro（宏内含当前插件路径）
+        static void RefreshMacros(AcadPopupMenu popup)
+        {
+            foreach (AcadPopupMenuItem it in popup)
+            {
+                for (int i = 0; i < Items.GetLength(0); i++)
+                {
+                    if (it.Label == Items[i, 0])
+                    {
+                        it.Macro = SelfLoadMacro() + "_" + Items[i, 1] + " ";
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 运行时重建部分菜单 CUI（文档模式：无参构造 + 设组名 + SaveAs）
         static void GenerateCui(string cui)
         {
             if (File.Exists(cui)) File.Delete(cui);
-            CustomizationSection cs = new CustomizationSection(cui, MenuGroupName);
+            CustomizationSection cs = new CustomizationSection();
+            cs.MenuGroup.Name = MenuGroupName;
             MenuGroup mg = cs.MenuGroup;
             MacroGroup mac = new MacroGroup(MenuGroupName + " commands", mg);
 
             PopMenu pm = new PopMenu(MenuTitle, new StringCollection(), MenuTitle + "Tag", mg);
             pm.Aliases.Add("BPPOP");
-            AddCmd(mac, pm, "单张打印预览", "BPPREVIEW");
-            AddCmd(mac, pm, "单张快打到 PDF", "BP1");
-            AddCmd(mac, pm, "批量出图对话框（勾选确认）", "BPLOT");
-            AddCmd(mac, pm, "全自动批量出图", "BPLOTAUTO");
-            AddCmd(mac, pm, "批量出图并合成单 PDF", "BPLOTMERGE");
-            AddCmd(mac, pm, "布局批量出图", "BPL");
-            AddCmd(mac, pm, "DWG 按图框拆分", "BPSPLIT");
-            AddCmd(mac, pm, "图框学习", "BPTEACH");
-            AddCmd(mac, pm, "批量改版次/日期", "BPREV");
-            AddCmd(mac, pm, "使用说明（GitHub）...", "BPHELP");
-            AddCmd(mac, pm, "关于 BPPlot...", "BPABOUT");
-            cs.Save();
+            for (int i = 0; i < Items.GetLength(0); i++)
+            {
+                MenuMacro mm = new MenuMacro(mac, Items[i, 0],
+                    SelfLoadMacro() + "_" + Items[i, 1] + " ", "ID_" + Items[i, 1]);
+                new PopMenuItem(mm, Items[i, 0], pm, pm.PopMenuItems.Count);
+            }
+            if (!cs.SaveAs(cui)) throw new System.Exception("部分菜单写入失败: " + cui);
         }
 
-        static void AddCmd(MacroGroup mac, PopMenu pm, string label, string command)
+        // 菜单项宏前缀：先确保插件已加载再执行命令。
+        // NETLOAD 对已加载程序集是幂等空操作；路径取自程序集实际位置（正斜杠避免转义问题），
+        // FILEDIA 临时置 0 以免 NETLOAD 弹文件对话框（原值用局部变量恢复）。
+        static string SelfLoadMacro()
         {
-            MenuMacro mm = new MenuMacro(mac, label, "^C^C_" + command + " ", "ID_" + command);
-            new PopMenuItem(mm, label, pm, pm.PopMenuItems.Count);
+            string dll = typeof(BpMenu).Assembly.Location.Replace('\\', '/');
+            return "^C^C^P(progn (setq bp_fd (getvar \"filedia\")) (setvar \"filedia\" 0)" +
+                   " (command \"_.NETLOAD\" \"" + dll + "\") (setvar \"filedia\" bp_fd));";
+        }
+
+        static void Notice(AcadApplication app, string msg)
+        {
+            try
+            {
+                Document doc = Application.DocumentManager.MdiActiveDocument;
+                if (doc != null) doc.Editor.WriteMessage("\n" + msg + "\n");
+            }
+            catch { }
         }
 
         [CommandMethod("BPHELP")]
@@ -111,7 +178,7 @@ namespace BpPlot
                 "BPPlot v0.7 — AutoCAD 批量打印插件\n" +
                 "图框自动识别 · 精确比例批量出图 · 合并书签 · 无头批打\n\n" +
                 "开源: github.com/hwdemtv/batchplot-plugin\n" +
-                "License: MIT（无网络访问、无注册校验）");
+                "License: MIT");
         }
     }
 }
