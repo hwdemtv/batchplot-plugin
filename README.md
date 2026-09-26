@@ -8,7 +8,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![AutoCAD](https://img.shields.io/badge/AutoCAD-2021--2024-red)](https://github.com/hwdemtv/batchplot-plugin)
 [![Platform](https://img.shields.io/badge/.NET-Framework%204.x-blue)](https://github.com/hwdemtv/batchplot-plugin)
-[![无网络访问](https://img.shields.io/badge/离线-无网络·无校验·无指纹-success)](https://github.com/hwdemtv/batchplot-plugin)
 
 *English: A free & open-source **batch plot / batch print plugin for AutoCAD** (C#, .NET Framework 4.x,
 AutoCAD 2021–2024). Auto-detects drawing frames / title blocks in model space, picks the smallest
@@ -24,8 +23,7 @@ with bookmarks, exports a sheet schedule CSV, and runs **headless via accorecons
 
 ---
 
-原创实现，功能思路上参考 MSteel 批打印，**代码全部原创**。
-**无硬件指纹、无注册校验、无网络访问。** PDF 合并用 PdfSharp（MIT 协议，libs/ 内）。
+PDF 合并用 PdfSharp（MIT 协议，libs/ 内）。
 
 ## v0.7 新增（当前开发版）
 
