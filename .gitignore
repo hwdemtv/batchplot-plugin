@@ -5,3 +5,10 @@ test/out_fix_real/
 
 # 备份文件
 *.bak
+
+# 真实项目运行日志/诊断（含客户工程信息，仅本地留存）
+test/real_fix.log
+test/real_plot.log
+test/run_test.log
+test/diag_real.log
+test/diag_report.txt

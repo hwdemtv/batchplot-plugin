@@ -1,7 +1,47 @@
-# BPPlot — 自研 AutoCAD 批量打印插件（v0.6）
+<div align="center">
 
-原创实现，功能上参考 MSteel 批打印的思路，代码全部原创。
+# BPPlot — AutoCAD 批量打印插件
+
+**免费开源 · 图框自动识别 · 精确比例批量出图 · DWG 批量转 PDF · 合并书签 · 无头批打**
+
+[![Release](https://img.shields.io/github/v/tag/hwdemtv/batchplot-plugin?label=%E6%9C%80%E6%96%B0%E7%89%88&sort=semver)](https://github.com/hwdemtv/batchplot-plugin/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![AutoCAD](https://img.shields.io/badge/AutoCAD-2021--2024-red)](https://github.com/hwdemtv/batchplot-plugin)
+[![Platform](https://img.shields.io/badge/.NET-Framework%204.x-blue)](https://github.com/hwdemtv/batchplot-plugin)
+[![无网络访问](https://img.shields.io/badge/离线-无网络·无校验·无指纹-success)](https://github.com/hwdemtv/batchplot-plugin)
+
+*English: A free & open-source **batch plot / batch print plugin for AutoCAD** (C#, .NET Framework 4.x,
+AutoCAD 2021–2024). Auto-detects drawing frames / title blocks in model space, picks the smallest
+suitable paper, plots **exact-scale PDFs** (incl. extended sheet sizes), merges them into one PDF
+with bookmarks, exports a sheet schedule CSV, and runs **headless via accoreconsole**.*
+
+**[下载 Releases](../../releases) · [使用说明](#使用) · [命令总表](#命令总表) · [常见问题](#踩坑记录对本机-autocad-2023-实测)**
+
+**关键词**：AutoCAD 批量打印 · 批量出图 · DWG 转 PDF · 图框识别 · 天正图框 · 加长图幅 · A0/A1/A2 出图 ·
+精确 1:n 比例 · 黑白打印 · 图纸目录 CSV · PDF 合并书签 · DWG 拆分 · accoreconsole 无头批打 · 批打印工具
+
+</div>
+
+---
+
+原创实现，功能思路上参考 MSteel 批打印，**代码全部原创**。
 **无硬件指纹、无注册校验、无网络访问。** PDF 合并用 PdfSharp（MIT 协议，libs/ 内）。
+
+## 为什么写这个插件
+
+- 天正/普通图框混排的图，商用批打印工具常**强制 A0/A1 缩放**，加长幅变形；BPPlot 自动选最小可容纸张并矢量裁切到真实图幅，**1:100 出来就是 1:100**
+- 图纸空间与模型空间图框混排、空图框、重复图框，逐一手工挑很烦；BPPlot 自动识别 + 去重 + 跳空窗
+- 出完整批图还要一份**图纸目录**（序号/图号/图名/纸张/A4 当量），送印估算直接用
+- 无头 accoreconsole 批打整目录，**挂机出图不用守着 AutoCAD**
+
+## 快速开始（30 秒版）
+
+```text
+1. 下载 Releases 里的 BPPlot-v0.6.zip，解压到任意目录（BPPlot.dll 与 PdfSharp.dll 须同目录）
+2. AutoCAD 命令行： APPLOAD → 选 BPPlot.dll →（可加入启动套件）
+3. 命令行输入 BPLOT  → 框选图框 → 回车 → 对话框里勾选 → 出图
+   或 BPLOTAUTO → 自动识别全图图框直接出 PDF
+```
 
 ## v0.6 修复（2026-09，真实图纸 + accoreconsole 实测验证）
 
@@ -50,7 +90,7 @@
 4. **DWG 拆分（BPSPLIT）**：手选图框，逐框 WBLOCK 成独立 DWG（图幅相对坐标归零）
 5. **多段线伪框过滤**：`minPolylineSide`（默认 15000 图形单位）过滤小矩形误判
 
-## 真实图纸验证（汉阳科研大楼弱电平面图，天正 T20 V8 环境，v0.6 复测）
+## 真实图纸验证（某超高层办公楼弱电施工图，约 25 页/7 万实体级真实工程，天正 T20 V8 环境，v0.6 复测）
 
 | 指标 | MSteel | BPPlot v0.6 |
 |---|---|---|

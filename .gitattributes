@@ -1,0 +1,10 @@
+* text=auto
+*.cmd text eol=crlf
+*.scr text
+*.cs text
+*.md text
+*.dll binary
+*.dwg binary
+*.pdf binary
+*.png binary
+*.bin binary
