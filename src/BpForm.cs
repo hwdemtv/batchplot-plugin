@@ -40,7 +40,7 @@ namespace BpPlot
 
         void BuildUi()
         {
-            Text = "BPPlot 批量出图 v0.6 — " + _dwgName;
+            Text = "BPPlot 批量出图 v0.7 — " + _dwgName;
             Width = 1000; Height = 640;
             StartPosition = FormStartPosition.CenterScreen;
             AutoScaleMode = AutoScaleMode.Dpi;   // 高 DPI 屏不再整体偏小

@@ -47,18 +47,26 @@ namespace BpPlot
     {
         public void Initialize()
         {
+            // 图形界面：挂「BP-批量打印」菜单栏（重复 NETLOAD 自动去重）
+            bool isConsole = false;
             try
             {
-                // "加载即出图"（USERS2 触发）仅 accoreconsole 无头模式生效：
-                // 完整版 acad 中 USERS2 是通用变量，其他 LISP/插件可能正在用，
-                // NETLOAD 时静默整图批打属于误伤；GUI 下请手动执行 BPLOTAUTO。
-                try
-                {
-                    if (!string.Equals(Process.GetCurrentProcess().ProcessName,
-                        "accoreconsole", StringComparison.OrdinalIgnoreCase)) return;
-                }
-                catch { return; }   // 进程名不可得时按非控制台处理（保守）
+                isConsole = string.Equals(Process.GetCurrentProcess().ProcessName,
+                    "accoreconsole", StringComparison.OrdinalIgnoreCase);
+            }
+            catch { }
 
+            if (!isConsole)
+            {
+                BpMenu.Install();
+                return;
+            }
+
+            try
+            {
+                // 控制台专属："加载即出图"（USERS2 非空触发）。
+                // 完整版 acad 的 USERS2 是通用变量，其他 LISP/插件可能正在用，
+                // 静默整图批打属于误伤；GUI 下请手动执行 BPLOTAUTO 或用菜单。
                 string dir = "";
                 object u2 = Autodesk.AutoCAD.ApplicationServices.Application.GetSystemVariable("USERS2");
                 if (u2 != null) dir = u2.ToString().Trim();
@@ -588,7 +596,113 @@ namespace BpPlot
         [LispFunction("BPVER")]
         public object BpVerLisp(ResultBuffer args)
         {
-            return new ResultBuffer(new TypedValue((int)LispDataType.Text, "BPPlot v0.6"));
+            return new ResultBuffer(new TypedValue((int)LispDataType.Text, "BPPlot v0.7"));
+        }
+
+        // ---------- 试验命令：单张打印预览（复用 BuildPage + 预览引擎，路线可行性验证） ----------
+        // 选择图框后回车（或直接回车=自动识别取最大图框），弹出该图框的打印预览窗口。
+        // 每一步骤写入 %APPDATA%\BPPlot\preview_test.log，供自动化验证与排障。
+        [CommandMethod("BPPREVIEW", CommandFlags.Modal)]
+        public void BpPreviewTest()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            Editor ed = doc.Editor;
+            Database db = doc.Database;
+            string logPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BPPlot", "preview_test.log");
+            Action<string> log = delegate(string s)
+            {
+                string line = DateTime.Now.ToString("HH:mm:ss.fff ") + s;
+                try { File.AppendAllText(logPath, line + "\r\n", Encoding.UTF8); } catch { }
+                try { ed.WriteMessage("\n" + s); } catch { }
+            };
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(logPath));
+                File.WriteAllText(logPath, "");
+            }
+            catch { }
+            log("BPPREVIEW 开始");
+
+            int scale = 100;
+            try
+            {
+                object u1 = Application.GetSystemVariable("USERS1");
+                int v;
+                if (u1 != null && int.TryParse(u1.ToString(), out v) && v >= 1) scale = v;
+            }
+            catch { }
+
+            // 图框来源：手选（回车结束）；未选则自动识别取最大者
+            List<FrameInfo> frames;
+            using (Transaction tr = db.TransactionManager.StartTransaction())
+            {
+                frames = CollectFrames(ed, db, tr, false);
+                tr.Commit();
+            }
+            if (frames.Count == 0)
+            {
+                ed.WriteMessage("\n未手选图框，自动识别...");
+                using (Transaction tr = db.TransactionManager.StartTransaction())
+                {
+                    frames = CollectFrames(ed, db, tr, true);
+                    tr.Commit();
+                }
+                DropContained(frames);
+            }
+            if (frames.Count == 0) { log("未识别到图框，结束"); return; }
+            FrameInfo f = frames[0];
+            log(string.Format("图框就绪: {0}x{1} 图形单位（共识别 {2} 框）",
+                (f.MaxX - f.MinX).ToString("0"), (f.MaxY - f.MinY).ToString("0"), frames.Count));
+
+            PlotEngine pe = null;
+            try
+            {
+                // 与 BPLOT 相同的参数构建（纸张表/CTB/BuildPage）
+                PlotSettingsValidator val = PlotSettingsValidator.Current;
+                List<Media> medias;
+                using (PlotSettings probe = new PlotSettings(true))
+                {
+                    val.SetPlotConfigurationName(probe, DeviceName, null);
+                    medias = ParseMediaList(val.GetCanonicalMediaNameList(probe));
+                }
+                if (medias.Count == 0) { log("打印设备无可用毫米纸张"); return; }
+                string ctb = FindCtb(val);
+
+                PlotInfo pi;
+                using (Transaction tr = db.TransactionManager.StartTransaction())
+                {
+                    ObjectId layId = LayoutManager.Current.GetLayoutId("Model");
+                    Layout lay = (Layout)tr.GetObject(layId, OpenMode.ForRead);
+                    string mediaUsed; double paperW, paperH, trueW, trueH; int rotUsed;
+                    pi = BuildPage(val, lay, f, scale, medias, doc, ctb, 0,
+                        out mediaUsed, out paperW, out paperH, out trueW, out trueH, out rotUsed);
+                    tr.Commit();
+                    log(string.Format("BuildPage OK: 纸张={0} 旋转={1}° 比例=1:{2} 图幅={3}x{4}mm 落纸={5}x{6}mm",
+                        mediaUsed, rotUsed, scale, trueW.ToString("0.#"), trueH.ToString("0.#"),
+                        paperW.ToString("0.#"), paperH.ToString("0.#")));
+                }
+
+                log("CreatePreviewEngine((int)PreviewEngineFlags.Plot)...");
+                pe = PlotFactory.CreatePreviewEngine((int)PreviewEngineFlags.Plot);
+                log("预览引擎创建成功");
+
+                pe.BeginPlot(null, null);
+                pe.BeginDocument(pi, Path.GetFileName(doc.Name), null, 1, false, null);
+                pe.BeginPage(new PlotPageInfo(), pi, true, null);
+                pe.BeginGenerateGraphics(null);
+                pe.EndGenerateGraphics(null);
+                pe.EndPage(null);
+                log("页面渲染完成（预览窗口应已弹出，关闭后继续）");
+                pe.EndDocument(null);
+                pe.EndPlot(null);
+                log("== 预览流程全部成功 ==");
+            }
+            catch (System.Exception ex)
+            {
+                log("预览失败 @ " + ex.GetType().Name + ": " + ex.Message);
+            }
         }
 
         // ---------- 交互式批量出图并合成单 PDF ----------
@@ -855,7 +969,7 @@ namespace BpPlot
                     + " 个，实际出图 " + frames.Count + " 个\n");
             if (outDir == null || outDir.Trim().Length == 0)
                 outDir = DefaultOutDir(doc.Database, "PDF_OUT");
-            ed.WriteMessage(string.Format("\nBPLOT v0.6: {0} 个图框，比例 1:{1}{2}{3}{4}，输出 {5}\n",
+            ed.WriteMessage(string.Format("\nBPLOT v0.7: {0} 个图框，比例 1:{1}{2}{3}{4}，输出 {5}\n",
                 frames.Count, scale, mono ? "，黑白" : "，彩色",
                 margin != 0 ? "，留白" + margin.ToString("0.##") + "mm" : "",
                 merge ? "，合成单PDF" : "", outDir));

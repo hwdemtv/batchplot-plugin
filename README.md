@@ -27,6 +27,18 @@ with bookmarks, exports a sheet schedule CSV, and runs **headless via accorecons
 原创实现，功能思路上参考 MSteel 批打印，**代码全部原创**。
 **无硬件指纹、无注册校验、无网络访问。** PDF 合并用 PdfSharp（MIT 协议，libs/ 内）。
 
+## v0.7 新增（当前开发版）
+
+1. **菜单栏「BP-批量打印」**：NETLOAD 即自动挂到菜单栏（与 M-批打印 并列），11 项全命令入口 +
+   使用说明/关于；纯代码实现（AcCui 运行时生成部分菜单 CUI + COM 挂载），无 .cuix 附件。
+   看不到菜单栏时执行 `MENUBAR` 输入 `1`；重复 NETLOAD 自动去重。
+2. **单张打印预览 BPPREVIEW**：选图框（回车=自动识别取最大图框）→ 弹出该图框的打印预览窗口，
+   参数与正式出图完全一致（复用 BuildPage：纸张/比例/旋转/黑白）。基于 AutoCAD 预览引擎
+   （`PlotFactory.CreatePreviewEngine`）实测打通：预览窗口弹出后阻塞等待人工关闭（ESC/点击），
+   关闭后 EndPlot 正常收尾。这是「出图预览确认」待办的第一块基石；批量预览/确认后落盘待排期。
+   仅图形界面可用（accoreconsole 无图形环境）。
+3. 命令总表新增：`BPPREVIEW`（单张预览）、`BPHELP`（打开在线说明）、`BPABOUT`（关于）。
+
 ## 为什么写这个插件
 
 - 天正/普通图框混排的图，商用批打印工具常**强制 A0/A1 缩放**，加长幅变形；BPPlot 自动选最小可容纸张并矢量裁切到真实图幅，**1:100 出来就是 1:100**
@@ -117,10 +129,12 @@ BPTEACH 学习一次块名即可自动识别；动态块匿名 *U 名已正确�
 | `BPLOTAUTO` | 全自动（控制台加载触发：USERS2 非空即出图）|
 | `BPLOTMERGE` | 批量出图并合成单 PDF |
 | `BP1` | 单张快打 |
+| `BPPREVIEW` | 单张打印预览（界面模式；回车=自动取最大图框）|
 | `BPTEACH` | 图框学习（块名+属性标签 → config.json）|
 | `BPREV` | 批量改版次/日期 |
 | `BPL` | 布局批量出图 |
 | `BPSPLIT` | 按图框拆分 DWG |
+| `BPHELP` / `BPABOUT` | 打开在线说明 / 关于（菜单栏同款）|
 
 参数：`USERS1`=比例、`USERS2`=输出目录、`USERS3=0`关黑白、`USERS4`=留白mm、
 环境变量 `BPPLOT_MERGE=1`=合并模式（控制台用，GUI 直接用 BPLOTMERGE）
@@ -174,7 +188,9 @@ BPTEACH 学习一次块名即可自动识别；动态块匿名 *U 名已正确�
 ```
 cmd /c build.cmd
 ```
-依赖：AutoCAD 安装目录的 acmgd/acdbmgd/accoremgd 三个 DLL（路径写在 build.cmd 里，换机器改 `ACAD=`）。目标 .NET Framework 4.x，适用 AutoCAD 2021–2024。
+依赖：AutoCAD 安装目录的 acmgd / acdbmgd / accoremgd / AcCui / Autodesk.AutoCAD.Interop(.Common)
+共 6 个 DLL（均为 AutoCAD 自带，路径写在 build.cmd 里，换机器改 `ACAD=`）。
+目标 .NET Framework 4.x，适用 AutoCAD 2021–2024。
 
 ## 部署
 
@@ -185,15 +201,18 @@ cmd /c build.cmd
 
 ### 方式一：AutoCAD 界面（日常）
 ```
-NETLOAD → 选 BPPlot.dll
+NETLOAD → 选 BPPlot.dll        ← 菜单栏自动出现「BP-批量打印」（或加入启动套件一劳永逸）
+BP-批量打印 菜单 → 出图对话框 / 全自动 / 单张预览 / 合并PDF / 布局 / 拆分 / 学习 ...
 BPLOT       交互式批量：框选任意实体(天正图框也可) → 比例(默认100) → 输出目录
 BPLOTAUTO   全自动：自动识别全部图框；比例=USERS1、目录=USERS2、USERS3=0 关黑白、留白=USERS4
+BPPREVIEW   单张打印预览：选图框（回车=自动取最大）→ 预览窗口（ESC 关闭）
 BP1         单张快打：默认参数，选完即出
 BPTEACH     图框学习：选一个图框块，记录块名+属性标签映射（存开放 JSON）
 BPREV       批量改图框信息：版次自动+1 / 日期改今天（选择后两项均可自定义）
 
 配置文件：`%APPDATA%\BPPlot\config.json`（学习结果 + 文件名模板，UTF-8，可直接手编）
 ```
+菜单栏没出现「BP-批量打印」时：命令行执行 `MENUBAR` 输入 `1` 显示菜单栏（功能区界面默认隐藏）。
 要每次启动自动加载：`_APPLOAD` → 启动套件 → 添加 BPPlot.dll（连同 PdfSharp.dll 同目录）。
 **注意**：USERS2 触发的"加载即出图"**仅在 accoreconsole 无头模式生效**（GUI 里 USERS2
 是通用变量，其他插件可能正在用，NETLOAD 误触发整图批打属于事故）；GUI 下请手动执行
@@ -246,11 +265,11 @@ _.quit _y                                    ; accoreconsole: _y=放弃修改；
 
 ## 路线图
 
-**已完成**（详见上方版本历史）：出图对话框 BPLOT（v0.5）｜合成单 PDF+书签（v0.4）｜布局批量出图 BPL（v0.4）｜DWG 拆分 BPSPLIT（v0.4）｜图框学习 BPTEACH+天正 T20 块名兼容（v0.3）｜文件名模板（v0.3）｜黑白打印 monochrome.ctb（v0.2）
+**已完成**（详见上方版本历史）：菜单栏 BP-批量打印（v0.7）｜单张打印预览 BPPREVIEW（v0.7）｜出图对话框 BPLOT（v0.5）｜合成单 PDF+书签（v0.4）｜布局批量出图 BPL（v0.4）｜DWG 拆分 BPSPLIT（v0.4）｜图框学习 BPTEACH+天正 T20 块名兼容（v0.3）｜文件名模板（v0.3）｜黑白打印 monochrome.ctb（v0.2）
 
 **待办**：
 1. 多 DWG 目录遍历——第一步补一个 `for %%f in (*.dwg)` 循环调 accoreconsole 的批处理脚本（含失败清单汇总）；accoreconsole 多进程并行按需评估（并行时每进程需独立 DWG 与输出目录，license 占用翻倍）
-2. 出图预览确认（方案已评估，待排期）——三档可组合：`BPCHECK` 预检高亮（识别框临时标注+逐框查看，改动最小）；先按正式参数出图到临时目录、确认后落盘/取消即删（WYSIWYG，不重复出图）；BPLOT 对话框内嵌缩略图（体验最佳、成本最高）。仅界面模式有效，无头批打以"试跑样本→再全量"替代
+2. 出图预览确认——**单张预览引擎路线已实测打通**（v0.7 BPPREVIEW：复用 BuildPage + `PlotFactory.CreatePreviewEngine`，预览阻塞等待人工关闭）。剩余：对话框内嵌预览入口、批量预览、「预览→确认→落盘」流程（预览引擎按正式参数渲染，确认后可直接落盘避免二次出图）。仅界面模式有效，无头批打以"试跑样本→再全量"替代
 
 **不做**：实体打印机纸张输出——插件定位就是 PDF 出图，设备固定 `DWG To PDF.pc3`，不开放设备选择。
 
