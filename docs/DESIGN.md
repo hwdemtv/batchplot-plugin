@@ -1,6 +1,16 @@
 # BPPlot 后续开发设计方案
 
-状态：定稿（2026-09）｜基线：v0.6（commit 79b4a7d 之后）｜预计总量：约 18 人日
+状态：定稿（2026-09）｜基线：v0.7（commit bb1798a 之后）｜预计总量：约 18 人日
+
+> **v0.7 对齐修订（2026-09）**：
+> ① 预览路线已实测打通第三条更便宜的路径——`PlotFactory.CreatePreviewEngine`（v0.7 的
+> BPPREVIEW：复用 BuildPage 参数，预览窗口阻塞等待人工关闭后引擎全流程正常收尾）。
+> M5 的"预览列"实现顺序更新为：**CreatePreviewEngine（已验证）→ GS 离屏渲染 → PNG 试打兜底**；
+> BPCHECK 预检高亮仍按 P0 先行不变。
+> ② 部署侧提前完成：注册表按需加载安装器（LOADCTRLS=2，镜像 MSteel 可用配置）+ BPSELFTEST
+> 部署自检已随 v0.7 交付；本机构建（24.2s LMS Tech）实测**不支持** ApplicationPlugins bundle
+> 自动加载（最小探针包对照实验证实），安装器双保险保留 bundle 但主路径为注册表。
+> ③ 本文档基线由 v0.6 更新为 v0.7；第 7 节基线表补充 v0.7 新增挂点。
 
 功能对标参考 MSteel 批打印（本机 2025-04 版官方文档逐条核对）。**明确不做**：签名/印章库、
 实体打印机纸张输出（设备固定 `DWG To PDF.pc3`）。MSteel 的"五种框选方式"与打印目标无关，
@@ -108,7 +118,7 @@ batch/
 
 | 功能 | 实现要点 |
 |---|---|
-| 预览列（点行看缩略图） | 首选 GS 离屏渲染（`GraphicsSystem` 按图框 extents 渲染位图，GUI 模式快且无闪屏）；控制台/兜底走低分辨率 PNG 试打（同一 PlotEngine 管线）。内存缓存，选中行懒加载 |
+| 预览列（点行看缩略图） | **首选 CreatePreviewEngine（v0.7 BPPREVIEW 已实测打通：复用 BuildPage 参数，窗口阻塞等待关闭，引擎收尾正常；缩略图化=离屏/低分辨率 + 截帧待调）**；次选 GS 离屏渲染（`GraphicsSystem` 按图框 extents 渲染位图，GUI 模式快且无闪屏）；控制台/兜底走低分辨率 PNG 试打（同一 PlotEngine 管线）。内存缓存，选中行懒加载 |
 | BPCHECK 预检高亮 | 识别框临时图层高亮+序号，逐框缩放查看，退出即删（预览最小形态，P0 先行交付） |
 | 多行批量编辑 | DataGridView 多选（借不可编辑的序号列选行）+ 右键菜单改纸张/比例/版次/日期 |
 | 表头统一改 | 点「纸张尺寸」「打印比例」列头全表统一 |
@@ -191,3 +201,7 @@ batch/
 | 出图对话框 | `BpForm` | M5 全部增强 |
 | CSV 目录 + 纸张统计 | `WriteCsvAndStats` | M4 Excel |
 | 旋转变换标定（rot=90 反转置） | `CropPdf` | 迁移不动（核心资产） |
+| **（v0.7）菜单栏 BP-批量打印** | `BpMenu`（AcCui 生成 CUI + COM 挂载，宏自加载） | M5 增强后菜单项随之更新（安装器 rebuild 机制自动同步） |
+| **（v0.7）单张预览引擎路线** | `BPPREVIEW`（CreatePreviewEngine + BuildPage） | M5 预览列首选路径；批量预览/确认后落盘在此之上扩展 |
+| **（v0.7）注册表按需加载安装器** | `deploy/install.ps1`（HKCU Applications\BPPlot，LOADCTRLS=2） | P1 的 runall.bat/BpBatch 前置条件已就绪（命令注册表声明即含新命令） |
+| **（v0.7）BPSELFTEST 部署自检** | `BPSELFTEST`（PdfSharp 加载/裁切自检，写 selftest.log） | 测试策略新增：每期验收前跑一次，作环境基线 |
