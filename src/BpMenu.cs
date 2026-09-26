@@ -102,19 +102,24 @@ namespace BpPlot
             return null;
         }
 
-        // 就地刷新：按标签匹配逐项 set_Macro（宏内含当前插件路径）
+        // 就地刷新：按标签匹配逐项 set_Macro（宏内含当前插件路径）；
+        // 单项失败不拖累其余项
         static void RefreshMacros(AcadPopupMenu popup)
         {
             foreach (AcadPopupMenuItem it in popup)
             {
-                for (int i = 0; i < Items.GetLength(0); i++)
+                try
                 {
-                    if (it.Label == Items[i, 0])
+                    for (int i = 0; i < Items.GetLength(0); i++)
                     {
-                        it.Macro = SelfLoadMacro() + "_" + Items[i, 1] + " ";
-                        break;
+                        if (it.Label == Items[i, 0])
+                        {
+                            it.Macro = SelfLoadMacro() + "_" + Items[i, 1] + " ";
+                            break;
+                        }
                     }
                 }
+                catch { }
             }
         }
 

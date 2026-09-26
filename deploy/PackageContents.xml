@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage SchemaVersion="1.0"
+                    AppVersion="0.7"
+                    Name="BPPlot 批量打印"
+                    Author="hwdemtv"
+                    Description="AutoCAD 批量打印插件：图框自动识别、精确比例批量出图、合并书签、无头批打">
+  <CompanyDetails Name="hwdemtv" Url="https://github.com/hwdemtv/batchplot-plugin" Email="hwdemtv@qq.com"/>
+  <RuntimeRequirements OS="Win64" Platform="AutoCAD" SeriesMin="R24.0" SeriesMax="R24.3"/>
+  <Components Description="BPPlot">
+    <ComponentEntry AppName="BPPlot" ModuleName="./Contents/BPPlot.dll" AppType="NET"/>
+  </Components>
+</ApplicationPackage>

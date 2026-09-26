@@ -47,11 +47,13 @@ PDF 合并用 PdfSharp（MIT 协议，libs/ 内）。
 ## 快速开始（30 秒版）
 
 ```text
-1. 下载 Releases 里的 BPPlot-v0.6.zip，解压到任意目录（BPPlot.dll 与 PdfSharp.dll 须同目录）
-2. AutoCAD 命令行： APPLOAD → 选 BPPlot.dll →（可加入启动套件）
-3. 命令行输入 BPLOT  → 框选图框 → 回车 → 对话框里勾选 → 出图
-   或 BPLOTAUTO → 自动识别全图图框直接出 PDF
+1. 下载 Releases 里的 BPPlot-v0.7.zip 并解压
+2. 双击「安装到本机.cmd」（免管理员；自动复制程序并写入当前用户的按需加载注册表）
+3. 完全退出并重启 AutoCAD —— 菜单栏出现「BP-批量打印」，命令 BPLOT / BPLOTAUTO 等
+   输入即用（无需 NETLOAD）
 ```
+
+卸载：解压目录里双击「卸载本机.cmd」。
 
 ## v0.6 修复（2026-09，真实图纸 + accoreconsole 实测验证）
 
@@ -192,8 +194,24 @@ cmd /c build.cmd
 
 ## 部署
 
-运行时需要两个文件在**同一目录**：`BPPlot.dll` + `PdfSharp.dll`（缺 PdfSharp 时裁切/
-合并静默降级并在日志提示）。图纸目录 `config.json` 在 `%APPDATA%\BPPlot\`。
+**方式 A（推荐）：安装脚本 + 注册表按需加载**
+
+Release 的 `BPPlot-v0.7.zip` 解压后双击「安装到本机.cmd」，它做三件事：
+1. 程序复制到 `%APPDATA%\BPPlot\bin\`（稳定路径）；
+2. 对本机检测到的每个 AutoCAD 版本写入 `HKCU\...\Applications\BPPlot` 按需加载键
+   （`LOADCTRLS=2` 命令调用时自动加载 + `COMMANDS` 子键列出全部命令；仅当前用户，免管理员）；
+3. 另放一份 `ApplicationPlugins\BPPlot.bundle`（标准构建的自动加载双保险）。
+
+效果：重启 AutoCAD 后命令输入即用、菜单自动挂载；「BP-批量打印」菜单持久化，
+点击菜单项也会自动加载插件。卸载双击「卸载本机.cmd」。
+
+**方式 B（便携）：手动 NETLOAD**
+
+`BPPlot.dll` + `PdfSharp.dll` 同目录，`APPLOAD`/`NETLOAD` 加载即用（菜单自动挂载）；
+每次会话需重新加载，或加入 `APPLOAD → 启动套件`。
+
+**部署自检**：任意部署方式下执行 `BPSELFTEST`，秒级验证 PdfSharp 加载与裁切管线
+（结果同时写入 `%APPDATA%\BPPlot\selftest.log`）。
 
 ## 使用
 
@@ -216,7 +234,7 @@ BPREV       批量改图框信息：版次自动+1 / 日期改今天（选择后
 把 DLL 目录加入受信任路径或 `SECURELOAD=0` 可免确认）。每次 NETLOAD 会就地刷新菜单宏
 （DLL 挪动/升级后路径自动更新）。想让菜单在启动时就绪、不经过首次点击，把 BPPlot.dll
 加入 `APPLOAD → 启动套件` 即可。
-要每次启动自动加载：`_APPLOAD` → 启动套件 → 添加 BPPlot.dll（连同 PdfSharp.dll 同目录）。
+手动 NETLOAD 部署要每次启动自动加载：`_APPLOAD` → 启动套件 → 添加 BPPlot.dll（方式 A 无此需要）。
 **注意**：USERS2 触发的"加载即出图"**仅在 accoreconsole 无头模式生效**（GUI 里 USERS2
 是通用变量，其他插件可能正在用，NETLOAD 误触发整图批打属于事故）；GUI 下请手动执行
 BPLOTAUTO / BPLOT，执行后 USERS2 自动清空。

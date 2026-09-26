@@ -1,0 +1,31 @@
+BPPlot 批量打印插件 — 安装说明
+================================
+
+安装
+----
+双击「安装到本机.cmd」安装完成后，把 AutoCAD 完全关闭再重新打开。
+启动时插件自动加载，菜单栏出现「BP-批量打印」；命令行输入 BPLOT /
+BPLOTAUTO / BPPREVIEW 等可直接执行，无需 NETLOAD。
+（如菜单栏未显示，命令行执行 MENUBAR 输入 1。）
+
+安装内容
+--------
+- 程序复制到 %APPDATA%\BPPlot\bin\
+- 写入 HKCU 按需加载注册表（仅当前用户，无需管理员），
+  覆盖本机已安装的全部 AutoCAD 版本（2021-2024）
+
+卸载
+----
+双击「卸载本机.cmd」，重启 AutoCAD 后生效。
+（config.json 配置文件会保留）
+
+命令速查
+--------
+BPLOT       出图对话框（勾选确认）   BPLOTAUTO   全自动批量出图
+BP1         单张快打                 BPPREVIEW   单张打印预览
+BPLOTMERGE  合并单 PDF 出图          BPL         布局批量出图
+BPSPLIT     按图框拆分 DWG           BPTEACH     图框学习
+BPREV       批量改版次/日期          BPSELFTEST  部署自检
+
+要求：AutoCAD 2021 / 2022 / 2023 / 2024（64 位）
+开源地址：https://github.com/hwdemtv/batchplot-plugin

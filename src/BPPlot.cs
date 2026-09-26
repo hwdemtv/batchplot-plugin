@@ -599,6 +599,44 @@ namespace BpPlot
             return new ResultBuffer(new TypedValue((int)LispDataType.Text, "BPPlot v0.7"));
         }
 
+        // ---------- 部署自检：验证当前环境里 PdfSharp 可加载、裁切管线可用 ----------
+        // 非交互、秒级完成；用于 bundle/NETLOAD 等不同部署方式下的依赖排查
+        [CommandMethod("BPSELFTEST")]
+        public void BpSelfTest()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            string logPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BPPlot", "selftest.log");
+            Action<string> log = delegate(string s)
+            {
+                try { File.AppendAllText(logPath, DateTime.Now.ToString("HH:mm:ss ") + s + "\r\n", Encoding.UTF8); } catch { }
+                if (doc != null) { try { doc.Editor.WriteMessage("\n" + s + "\n"); } catch { } }
+            };
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(logPath));
+                string tmp = Path.Combine(Path.GetTempPath(), "bp_selftest_src.pdf");
+                PdfDocument d = new PdfDocument();
+                PdfPage pg = d.AddPage();
+                pg.Width = XUnit.FromMillimeter(100);
+                pg.Height = XUnit.FromMillimeter(100);
+                d.Save(tmp);
+                d.Close();
+                long before = new FileInfo(tmp).Length;
+                bool cropped = CropPdf(tmp, 60, 60, 100, 100, 0);
+                long after = cropped && File.Exists(tmp) ? new FileInfo(tmp).Length : -1;
+                if (File.Exists(tmp)) File.Delete(tmp);
+                log(cropped
+                    ? "BPSELFTEST 通过：PdfSharp 加载/保存/裁切均正常（" + before + "B -> " + after + "B, 60x60mm）"
+                    : "BPSELFTEST 失败：CropPdf 未生效（PdfSharp 缺失或写入失败）");
+            }
+            catch (System.Exception ex)
+            {
+                log("BPSELFTEST 失败: " + ex.GetType().Name + ": " + ex.Message
+                    + "（多为 PdfSharp.dll 未与 BPPlot.dll 同目录）");
+            }
+        }
+
         // ---------- 试验命令：单张打印预览（复用 BuildPage + 预览引擎，路线可行性验证） ----------
         // 选择图框后回车（或直接回车=自动识别取最大图框），弹出该图框的打印预览窗口。
         // 每一步骤写入 %APPDATA%\BPPlot\preview_test.log，供自动化验证与排障。
