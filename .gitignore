@@ -12,3 +12,6 @@ test/real_plot.log
 test/run_test.log
 test/diag_real.log
 test/diag_report.txt
+# AutoCAD 锁文件
+*.dwl
+*.dwl2
