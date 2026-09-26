@@ -1,0 +1,7 @@
+(setvar "filedia" 0)
+_.pline 0,0 84100,0 84100,59400 0,59400 _c
+_.pline 100000,0 159400,0 159400,42000 100000,42000 _c
+_.pline 200000,0 318900,0 318900,84100 200000,84100 _c
+_.zoom _e
+_.saveas 2018 C:/Users/hwdem/.zcode/workspace/default/batchplot-plugin/test/test_dwg.dwg
+_.quit _n

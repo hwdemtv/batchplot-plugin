@@ -1,0 +1,17 @@
+(setvar "secureload" 0)
+(setvar "filedia" 0)
+(setvar "users1" "100")
+(setvar "users2" "C:/Users/hwdem/.zcode/workspace/default/batchplot-plugin/test/out_fix")
+_.erase _all
+
+_.pline 0,0 59400,0 59400,84100 0,84100 _c
+_.circle 29700,42050 10000
+_.-text 5000,78000 5000 0 ABC
+_.pline 200000,0 284100,0 284100,59400 200000,59400 _c
+_.circle 242050,29700 10000
+_.-text 205000,54000 5000 0 ABC
+_.pline 400000,0 518900,0 518900,84570 400000,84570 _c
+_.circle 459450,42285 10000
+_.-text 405000,79000 5000 0 XYZ
+(command "_.netload" "C:/Users/hwdem/.zcode/workspace/default/batchplot-plugin/BPPlot.dll")
+_.quit _y

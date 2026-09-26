@@ -1,0 +1,9 @@
+(setvar "secureload" 0)
+(setvar "filedia" 0)
+(setvar "users1" "100")
+(setvar "users2" "C:/Users/hwdem/.zcode/workspace/default/batchplot-plugin/test/out_t12")
+_.pline 0,0 90000,0 90000,63000 0,63000 _c
+_.circle 45000,31500 15000
+_.pline 100000,0 184100,0 184100,59400 100000,59400 _c
+(command "_.netload" "C:/Users/hwdem/.zcode/workspace/default/batchplot-plugin/BPPlot.dll")
+_.quit _y

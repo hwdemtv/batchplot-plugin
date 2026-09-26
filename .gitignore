@@ -1,0 +1,7 @@
+# 真实客户图纸与出图成果 —— 不入库（保密；如需分享请先脱敏）
+test/real.dwg
+test/out_real/
+test/out_fix_real/
+
+# 备份文件
+*.bak
